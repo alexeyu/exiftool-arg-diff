@@ -5,3 +5,4 @@ ROADMAP.md
 
 node_modules/
 dist/
+.vscode/
