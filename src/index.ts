@@ -1,15 +1,15 @@
 /** A scalar exiftool tag value. */
 export type MetadataValue = string | number;
 
+/** A field's value: a scalar, a list, or absent. */
+type FieldValue = MetadataValue | MetadataValue[] | undefined;
+
 /**
  * Metadata keyed by exiftool tag name. Scalar fields hold a single value;
  * list fields hold an array. A missing/undefined value means the tag is
  * absent.
  */
-export type Metadata = Record<
-  string,
-  MetadataValue | MetadataValue[] | undefined
->;
+export type Metadata = Record<string, FieldValue>;
 
 /**
  * How a field's changes should be translated into exiftool args.
@@ -24,6 +24,19 @@ export type FieldStrategy = "overwrite" | "additive-list" | "list-overwrite";
 /** Per-field strategy declarations, keyed by exiftool tag name. */
 export type MetadataSchema = Record<string, FieldStrategy>;
 
+type StrategyDiffer = (
+  field: string,
+  oldValue: FieldValue,
+  newValue: FieldValue,
+) => string[];
+
+/** Diffing logic per strategy. Keyed by `FieldStrategy` so adding a new strategy forces adding its differ here. */
+const strategyDiffers: Record<FieldStrategy, StrategyDiffer> = {
+  overwrite: diffOverwrite,
+  "additive-list": diffAdditiveList,
+  "list-overwrite": diffListOverwrite,
+};
+
 /**
  * Diffs old vs new metadata per the given schema and returns the minimal
  * exiftool CLI args needed to apply the change, or `null` if nothing changed.
@@ -36,20 +49,8 @@ export function diffMetadataArgs(
   const args: string[] = [];
 
   for (const [field, strategy] of Object.entries(schema)) {
-    const oldValue = oldMetadata[field];
-    const newValue = newMetadata[field];
-
-    switch (strategy) {
-      case "overwrite":
-        args.push(...diffOverwrite(field, oldValue, newValue));
-        break;
-      case "additive-list":
-        args.push(...diffAdditiveList(field, oldValue, newValue));
-        break;
-      case "list-overwrite":
-        args.push(...diffListOverwrite(field, oldValue, newValue));
-        break;
-    }
+    const differ = strategyDiffers[strategy];
+    args.push(...differ(field, oldMetadata[field], newMetadata[field]));
   }
 
   return args.length > 0 ? args : null;
@@ -57,8 +58,8 @@ export function diffMetadataArgs(
 
 function diffOverwrite(
   field: string,
-  oldValue: MetadataValue | MetadataValue[] | undefined,
-  newValue: MetadataValue | MetadataValue[] | undefined,
+  oldValue: FieldValue,
+  newValue: FieldValue,
 ): string[] {
   if (oldValue === newValue) {
     return [];
@@ -66,39 +67,39 @@ function diffOverwrite(
   return [newValue === undefined ? `-${field}=` : `-${field}=${newValue}`];
 }
 
-function toList(
-  value: MetadataValue | MetadataValue[] | undefined,
-): MetadataValue[] {
+function toList(value: FieldValue): MetadataValue[] {
   if (value === undefined) {
     return [];
   }
   return Array.isArray(value) ? value : [value];
 }
 
-/** Removes one occurrence of `item` from `remaining`, if present. Returns whether it was found. */
-function removeOne(remaining: MetadataValue[], item: MetadataValue): boolean {
-  const index = remaining.indexOf(item);
-  if (index === -1) {
-    return false;
+/** Items present only in `oldList` (`removed`) or only in `newList` (`added`), as multisets (order-independent). */
+function multisetDiff(
+  oldList: MetadataValue[],
+  newList: MetadataValue[],
+): { added: MetadataValue[]; removed: MetadataValue[] } {
+  const removed = [...oldList];
+  const added: MetadataValue[] = [];
+
+  for (const item of newList) {
+    const index = removed.indexOf(item);
+    if (index === -1) {
+      added.push(item);
+    } else {
+      removed.splice(index, 1);
+    }
   }
-  remaining.splice(index, 1);
-  return true;
+
+  return { added, removed };
 }
 
 function diffAdditiveList(
   field: string,
-  oldValue: MetadataValue | MetadataValue[] | undefined,
-  newValue: MetadataValue | MetadataValue[] | undefined,
+  oldValue: FieldValue,
+  newValue: FieldValue,
 ): string[] {
-  const remaining = [...toList(oldValue)];
-  const added: MetadataValue[] = [];
-
-  for (const item of toList(newValue)) {
-    if (!removeOne(remaining, item)) {
-      added.push(item);
-    }
-  }
-  const removed = remaining;
+  const { added, removed } = multisetDiff(toList(oldValue), toList(newValue));
 
   return [
     ...added.map((item) => `-${field}+=${item}`),
@@ -106,23 +107,15 @@ function diffAdditiveList(
   ];
 }
 
-function isSameMultiset(a: MetadataValue[], b: MetadataValue[]): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  const remaining = [...a];
-  return b.every((item) => removeOne(remaining, item));
-}
-
 function diffListOverwrite(
   field: string,
-  oldValue: MetadataValue | MetadataValue[] | undefined,
-  newValue: MetadataValue | MetadataValue[] | undefined,
+  oldValue: FieldValue,
+  newValue: FieldValue,
 ): string[] {
-  const oldList = toList(oldValue);
   const newList = toList(newValue);
+  const { added, removed } = multisetDiff(toList(oldValue), newList);
 
-  if (isSameMultiset(oldList, newList)) {
+  if (added.length === 0 && removed.length === 0) {
     return [];
   }
   return [`-${field}=${newList.join(",")}`];
