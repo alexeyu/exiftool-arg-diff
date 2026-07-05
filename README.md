@@ -32,16 +32,18 @@ import { diffMetadataArgs, type MetadataSchema } from "exiftool-arg-diff";
 const schema: MetadataSchema = {
   Description: "overwrite",
   Keywords: "additive-list",
+  Rating: "overwrite",
 };
 
 const oldMetadata = { Description: "Sunset", Keywords: ["beach", "sunset"] };
 const newMetadata = {
   Description: "Sunset over the bay",
   Keywords: ["beach", "dusk"],
+  Rating: 5, // absent from oldMetadata: diffed as newly set, not skipped
 };
 
 diffMetadataArgs(schema, oldMetadata, newMetadata);
-// => ["-Description=Sunset over the bay", "-Keywords+=dusk", "-Keywords-=sunset"]
+// => ["-Description=Sunset over the bay", "-Keywords+=dusk", "-Keywords-=sunset", "-Rating=5"]
 ```
 
 If nothing changed, `diffMetadataArgs` returns `null` instead of `[]`, so
@@ -53,7 +55,10 @@ callers can skip running `exiftool` entirely.
 
 Diffs `oldMetadata` against `newMetadata` per `schema` and returns the
 `exiftool` CLI args needed to apply the change, or `null` if nothing changed.
-Fields not present in `schema` are ignored.
+Fields not present in `schema` are ignored. A field missing from
+`oldMetadata` or `newMetadata` is treated as `undefined` (tag absent), not
+skipped, so e.g. a field present only in `newMetadata` is diffed as newly
+added.
 
 ### `MetadataSchema`
 
@@ -86,6 +91,23 @@ missing/undefined value means the tag is absent.
 ### `MetadataValue`
 
 `string | number`, a scalar `exiftool` tag value.
+
+## Example schema
+
+There's no shipped default schema: which strategy fits a field depends on
+your workflow. Here's a starting point for photo metadata to copy and adjust:
+
+```ts
+const photoSchema: MetadataSchema = {
+  Title: "overwrite",
+  Description: "overwrite",
+  Rating: "overwrite",
+  GPSLatitude: "overwrite",
+  GPSLongitude: "overwrite",
+  Keywords: "additive-list", // JPEG/IPTC keywords support incremental edits
+  Subject: "additive-list",
+};
+```
 
 ## Integrating with exiftool-vendored
 
