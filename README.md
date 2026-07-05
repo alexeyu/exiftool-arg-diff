@@ -91,8 +91,8 @@ missing/undefined value means the tag is absent.
 
 This library only computes args; it's a natural companion to
 [`exiftool-vendored`](https://github.com/photostructure/exiftool-vendored.js),
-which runs `exiftool` for you. Pass the computed args as `write()`'s third
-argument, and skip the call entirely when there's nothing to do:
+which runs `exiftool` for you. Pass the computed args as `write()`'s
+`writeArgs` option, and skip the call entirely when there's nothing to do:
 
 ```ts
 import { exiftool } from "exiftool-vendored";
@@ -110,9 +110,8 @@ async function applyMetadataChange(
   newMetadata: Metadata,
 ): Promise<void> {
   const args = diffMetadataArgs(schema, oldMetadata, newMetadata);
-  if (args === null) {
-    return;
+  if (args !== null) {
+    await exiftool.write(file, {}, { writeArgs: args });
   }
-  await exiftool.write(file, {}, args);
 }
 ```

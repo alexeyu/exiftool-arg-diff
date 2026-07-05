@@ -17,8 +17,7 @@ export async function applyMetadataChange(
   newMetadata: Metadata,
 ): Promise<void> {
   const args = diffMetadataArgs(schema, oldMetadata, newMetadata);
-  if (args === null) {
-    return;
+  if (args !== null) {
+    await exiftool.write(file, {}, { writeArgs: args });
   }
-  await exiftool.write(file, {}, args);
 }
