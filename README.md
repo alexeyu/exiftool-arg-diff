@@ -1,8 +1,20 @@
 # exiftool-arg-diff
 
 Diff old/new metadata into the minimal `exiftool` CLI args needed to apply
-the change. Compute-only: this library never spawns `exiftool` itself, and
+the change. Compute-only: this library doesn't spawn `exiftool` itself, and
 never invokes it when nothing changed.
+
+## Why exiftool-arg-diff?
+
+- Writes only the fields that changed, not the whole record every save.
+- Diffs list fields as sets (`additive-list`), so keywords added by other
+  tools between reads aren't clobbered.
+- Zero runtime dependencies: a thin compute-only layer to drop next to
+  whatever runs `exiftool` for you (`exiftool-vendored`, a raw
+  `child_process` call, etc.).
+
+Not a fit for batch/`-stay_open` workflows (out of scope for now), or if
+you're not diffing against a prior metadata state at all.
 
 ## Install
 
@@ -22,14 +34,14 @@ const schema: MetadataSchema = {
   Keywords: "additive-list",
 };
 
-const oldMetadata = { Description: "Sunset", Keywords: ["beach"] };
+const oldMetadata = { Description: "Sunset", Keywords: ["beach", "sunset"] };
 const newMetadata = {
   Description: "Sunset over the bay",
   Keywords: ["beach", "dusk"],
 };
 
 diffMetadataArgs(schema, oldMetadata, newMetadata);
-// => ["-Description=Sunset over the bay", "-Keywords+=dusk"]
+// => ["-Description=Sunset over the bay", "-Keywords+=dusk", "-Keywords-=sunset"]
 ```
 
 If nothing changed, `diffMetadataArgs` returns `null` instead of `[]`, so
@@ -60,6 +72,10 @@ How a field's changes are translated into args:
 - `"list-overwrite"`: list field without incremental support, replaced
   wholesale (`-field=a,b,c`) whenever its multiset of values changes. Use
   this for containers that don't support incremental list edits (e.g. video).
+
+Don't use `"overwrite"` on a list field: it compares with `===` (reference
+equality), so it fires on every diff regardless of order or actual change.
+Use `"additive-list"` or `"list-overwrite"` for array-valued fields.
 
 ### `Metadata`
 

@@ -5,7 +5,7 @@ const schema: MetadataSchema = {
   Keywords: "additive-list",
 };
 
-const oldMetadata = { Description: "Sunset", Keywords: ["beach"] };
+const oldMetadata = { Description: "Sunset", Keywords: ["beach", "sunset"] };
 const newMetadata = {
   Description: "Sunset over the bay",
   Keywords: ["beach", "dusk"],

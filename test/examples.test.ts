@@ -25,6 +25,7 @@ describe("README examples", () => {
     expect(runBasicExample()).toEqual([
       "-Description=Sunset over the bay",
       "-Keywords+=dusk",
+      "-Keywords-=sunset",
     ]);
   });
 
