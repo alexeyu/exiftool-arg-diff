@@ -1,5 +1,7 @@
 # exiftool-arg-diff
 
+[![npm version](https://img.shields.io/npm/v/exiftool-arg-diff.svg)](https://www.npmjs.com/package/exiftool-arg-diff)
+
 Diff old/new metadata into the minimal `exiftool` CLI args needed to apply
 the change. Compute-only: this library doesn't spawn `exiftool` itself, and
 never invokes it when nothing changed.
