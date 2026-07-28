@@ -2,7 +2,7 @@
 export type MetadataValue = string | number;
 
 /** A field's value: a scalar, a list, or absent. */
-type FieldValue = MetadataValue | MetadataValue[] | undefined;
+export type FieldValue = MetadataValue | MetadataValue[] | undefined;
 
 /**
  * Metadata keyed by exiftool tag name. Scalar fields hold a single value;

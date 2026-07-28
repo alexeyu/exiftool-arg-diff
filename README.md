@@ -2,9 +2,12 @@
 
 [![npm version](https://img.shields.io/npm/v/exiftool-arg-diff.svg)](https://www.npmjs.com/package/exiftool-arg-diff)
 
-Diff old/new metadata into the minimal `exiftool` CLI args needed to apply
-the change. Compute-only: this library doesn't spawn `exiftool` itself, and
-never invokes it when nothing changed.
+Write the whole record on every save and you clobber the keywords another
+tool added between your read and your write. This library computes the
+minimal `exiftool` args to apply just what changed.
+
+Compute-only: it never spawns `exiftool`, and returns `null` when nothing
+changed so you can skip the call.
 
 ## Why exiftool-arg-diff?
 
@@ -86,9 +89,12 @@ Use `"additive-list"` or `"list-overwrite"` for array-valued fields.
 
 ### `Metadata`
 
-`Record<string, MetadataValue | MetadataValue[] | undefined>`. Scalar
-fields hold a single value, list fields hold an array, and a
-missing/undefined value means the tag is absent.
+`Record<string, FieldValue>`. Scalar fields hold a single value, list fields
+hold an array, and a missing/undefined value means the tag is absent.
+
+### `FieldValue`
+
+`MetadataValue | MetadataValue[] | undefined`, one field's value.
 
 ### `MetadataValue`
 
@@ -110,6 +116,18 @@ const photoSchema: MetadataSchema = {
   Subject: "additive-list",
 };
 ```
+
+## Composing with photo-metadata-replicate
+
+Diffing needs a new metadata state to compare against. To build one, pair
+this with
+[`photo-metadata-replicate`](https://www.npmjs.com/package/photo-metadata-replicate),
+which copies one item's metadata onto a set of targets: keywords union, and
+an empty source field never blanks a target.
+
+Its metadata shape matches this package's, so a merged result goes straight
+into `diffMetadataArgs`. Replicate to get the new metadata, then diff it
+against the original for the args to run.
 
 ## Integrating with exiftool-vendored
 

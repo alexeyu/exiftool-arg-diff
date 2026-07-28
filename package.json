@@ -1,13 +1,20 @@
 {
   "name": "exiftool-arg-diff",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Diff old/new metadata into the minimal exiftool CLI args needed to apply the change.",
   "keywords": [
     "exiftool",
+    "exiftool-vendored",
     "metadata",
+    "metadata-diff",
     "exif",
     "iptc",
     "xmp",
+    "keywords",
+    "iptc-keywords",
+    "xmp-keywords",
+    "photo-metadata",
+    "photo-metadata-replicate",
     "diff"
   ],
   "license": "MIT",
@@ -17,7 +24,7 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "node": ">=20"
   },
   "files": [
     "dist"
@@ -39,6 +46,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "format": "biome format --write .",
     "test": "vitest run"

@@ -18,6 +18,10 @@ const MINIMAL_XMP = `<?xpacket begin='﻿' id='W5M0MpCehiHzreSzNTczkc9d'?>
 <?xpacket end='w'?>
 `;
 
+// exiftool-vendored declares engines.node >=22, so the integration test only
+// runs there. The diffing tests still cover this package's own >=20 floor.
+const nodeMajor = Number(process.versions.node.split(".")[0]);
+
 describe("README examples", () => {
   afterAll(() => exiftool.end());
 
@@ -29,21 +33,24 @@ describe("README examples", () => {
     ]);
   });
 
-  it("exiftool-vendored integration writes only when something changed", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "exiftool-arg-diff-"));
-    const file = join(dir, "sample.xmp");
-    await writeFile(file, MINIMAL_XMP);
+  it.skipIf(nodeMajor < 22)(
+    "exiftool-vendored integration writes only when something changed",
+    async () => {
+      const dir = await mkdtemp(join(tmpdir(), "exiftool-arg-diff-"));
+      const file = join(dir, "sample.xmp");
+      await writeFile(file, MINIMAL_XMP);
 
-    await applyMetadataChange(file, {}, { Description: "hello" });
-    expect((await exiftool.read(file)).Description).toBe("hello");
+      await applyMetadataChange(file, {}, { Description: "hello" });
+      expect((await exiftool.read(file)).Description).toBe("hello");
 
-    // Nothing changed: this must not fail even though the underlying
-    // exiftool call is skipped.
-    await applyMetadataChange(
-      file,
-      { Description: "hello" },
-      { Description: "hello" },
-    );
-    expect((await exiftool.read(file)).Description).toBe("hello");
-  });
+      // Nothing changed: this must not fail even though the underlying
+      // exiftool call is skipped.
+      await applyMetadataChange(
+        file,
+        { Description: "hello" },
+        { Description: "hello" },
+      );
+      expect((await exiftool.read(file)).Description).toBe("hello");
+    },
+  );
 });
