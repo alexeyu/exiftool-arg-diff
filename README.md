@@ -2,24 +2,34 @@
 
 [![npm version](https://img.shields.io/npm/v/exiftool-arg-diff.svg)](https://www.npmjs.com/package/exiftool-arg-diff)
 
-Write the whole record on every save and you clobber the keywords another
-tool added between your read and your write. This library computes the
-minimal `exiftool` args to apply just what changed.
+Your app reads a file's metadata, the user edits two fields, and you write
+the result. Write the whole record and you push eleven unchanged tags back
+to disk, along with whatever another tool changed while you were holding the
+data.
 
-Compute-only: it never spawns `exiftool`, and returns `null` when nothing
-changed so you can skip the call.
+`diffMetadataArgs` takes what you read and what you now want, and returns
+the `exiftool` args that apply the difference. When nothing changed it
+returns `null`, so you skip the subprocess.
 
-## Why exiftool-arg-diff?
+## When this helps
 
-- Writes only the fields that changed, not the whole record every save.
-- Diffs list fields as sets (`additive-list`), so keywords added by other
-  tools between reads aren't clobbered.
-- Zero runtime dependencies: a thin compute-only layer to drop next to
-  whatever runs `exiftool` for you (`exiftool-vendored`, a raw
-  `child_process` call, etc.).
+You hold metadata in memory between reading a file and writing it: an
+editor, a tagging UI, a sync job, anything with a model the user edits.
+`exiftool` has no memory of what you read ten minutes ago, so it cannot
+separate your edit from one another tool made in the meantime. Your app
+knows both, and this turns that into the smallest correct write.
 
-Not a fit for batch/`-stay_open` workflows (out of scope for now), or if
-you're not diffing against a prior metadata state at all.
+- List fields diff as multisets, so `Keywords` emits `-Keywords+=added` and
+  `-Keywords-=removed` instead of replacing the list. Keywords a different
+  tool added survive.
+- Unchanged fields produce no args, and an unchanged record produces no call.
+- Zero runtime dependencies. It computes strings, and you keep whatever
+  already runs `exiftool` (`exiftool-vendored`, a raw `child_process` call).
+
+The payoff scales with how long you hold the data. A tagging UI left open
+for an hour has an hour of drift to guard against. A script that reads and
+writes in the same breath has almost none, and plain `exiftool` will serve
+it better.
 
 ## Install
 
@@ -122,8 +132,8 @@ const photoSchema: MetadataSchema = {
 Diffing needs a new metadata state to compare against. To build one, pair
 this with
 [`photo-metadata-replicate`](https://www.npmjs.com/package/photo-metadata-replicate),
-which copies one item's metadata onto a set of targets: keywords union, and
-an empty source field never blanks a target.
+which merges one item's metadata onto a set of targets in memory: keywords
+union, and an empty source field never blanks a target.
 
 Its metadata shape matches this package's, so a merged result goes straight
 into `diffMetadataArgs`. Replicate to get the new metadata, then diff it
