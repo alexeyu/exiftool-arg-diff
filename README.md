@@ -1,6 +1,8 @@
 # exiftool-arg-diff
 
+[![CI](https://github.com/alexeyu/exiftool-arg-diff/actions/workflows/ci.yml/badge.svg)](https://github.com/alexeyu/exiftool-arg-diff/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/exiftool-arg-diff.svg)](https://www.npmjs.com/package/exiftool-arg-diff)
+[![license: MIT](https://img.shields.io/npm/l/exiftool-arg-diff.svg)](./LICENSE)
 
 Your app reads a file's metadata, the user edits two fields, and you write
 the result. Write the whole record and you push eleven unchanged tags back
